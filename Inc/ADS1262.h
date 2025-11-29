@@ -106,11 +106,7 @@ typedef struct {
 // API functions
 
 /* ===================== Application functions ===================== */
-void ads_init_default(ads1262_t *dev, SPI_HandleTypeDef *hspi,
-                      GPIO_TypeDef *cs_port, uint16_t cs_pin,
-                      GPIO_TypeDef *drdy_port, uint16_t drdy_pin,
-                      GPIO_TypeDef *start_port, uint16_t start_pin,
-                      GPIO_TypeDef *pwdn_port, uint16_t pwdn_pin);
+void ads_init_default(ads1262_t *dev);
 int ads_reset(ads1262_t *dev);
 void ads_self_calibration(ads1262_t *dev);
 void ads_select_input(ads1262_t *dev, uint8_t pos_channel,
