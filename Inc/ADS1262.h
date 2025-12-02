@@ -92,47 +92,48 @@ extern "C" {
 
 // Device context
 typedef struct {
-  SPI_HandleTypeDef *hspi;
-  GPIO_TypeDef *cs_port;
-  uint16_t cs_pin;
-  GPIO_TypeDef *drdy_port;
-  uint16_t drdy_pin; // optional
-  GPIO_TypeDef *start_port;
-  uint16_t start_pin; // optional
-  GPIO_TypeDef *pwdn_port;
-  uint16_t pwdn_pin; // optional
+    SPI_HandleTypeDef* hspi;
+    GPIO_TypeDef*      cs_port;
+    uint16_t           cs_pin;
+    GPIO_TypeDef*      drdy_port;
+    uint16_t           drdy_pin; // optional
+    GPIO_TypeDef*      start_port;
+    uint16_t           start_pin; // optional
+    GPIO_TypeDef*      pwdn_port;
+    uint16_t           pwdn_pin; // optional
 } ads1262_t;
 
 // API functions
 
 /* ===================== Application functions ===================== */
-void ads_init_default(ads1262_t *dev);
-int ads_reset(ads1262_t *dev);
-void ads_self_calibration(ads1262_t *dev);
-void ads_select_input(ads1262_t *dev, uint8_t pos_channel,
-                          uint8_t neg_channel);
-void ads_start_conversion(ads1262_t *dev);
-void ads_stop_conversion(ads1262_t *dev);
-void ads_read_data_direct(ads1262_t *dev, uint8_t *rx_buff);
+void ads_init_default(ads1262_t* dev);
+int  ads_reset(ads1262_t* dev);
+void ads_self_calibration(ads1262_t* dev);
+void ads_select_input(ads1262_t* dev, uint8_t pos_channel, uint8_t neg_channel);
+void ads_select_input_fast(ads1262_t* dev, uint8_t pos_channel, uint8_t neg_channel);
+void ads_start_conversion(ads1262_t* dev);
+void ads_stop_conversion(ads1262_t* dev);
+void ads_read_data_direct(ads1262_t* dev, uint8_t* rx_buff);
 
 /* ===================== Communication basic functions ===================== */
-void ads_spi_send_command(ads1262_t *dev, uint8_t cmd);
-int ads_reg_write(ads1262_t *dev, uint8_t reg_addr, uint8_t data);
-int ads_reg_write_and_check(ads1262_t *dev, uint8_t reg_addr, uint8_t data);
-uint8_t ads_reg_read(ads1262_t *dev, uint8_t reg_addr);
+void    ads_spi_send_command(ads1262_t* dev, uint8_t cmd);
+int     ads_reg_write(ads1262_t* dev, uint8_t reg_addr, uint8_t data);
+int     ads_reg_write_fast(ads1262_t* dev, uint8_t reg_addr, uint8_t data);
+int     ads_reg_write_and_check(ads1262_t* dev, uint8_t reg_addr, uint8_t data);
+uint8_t ads_reg_read(ads1262_t* dev, uint8_t reg_addr);
 // void ads_reg_write_consecutive(ads1262_t *dev, uint8_t reg_start_addr,
 //                                uint8_t *tx_buff, uint8_t length);
 // void ads_reg_read_consecutive(ads1262_t *dev, uint8_t reg_start_addr,
-                              // uint8_t *rx_buff, uint8_t *dummy_tx_buff,
-                              // uint8_t length);
+// uint8_t *rx_buff, uint8_t *dummy_tx_buff,
+// uint8_t length);
 
 /* ===================== low-level port functions ===================== */
-void ads_cs_reset(ads1262_t *dev);
-void ads_cs_set(ads1262_t *dev);
-void ads_start_reset(ads1262_t *dev);
-void ads_start_set(ads1262_t *dev);
-void ads_pwdn_reset(ads1262_t *dev);
-void ads_pwdn_set(ads1262_t *dev);
+void ads_cs_reset(ads1262_t* dev);
+void ads_cs_set(ads1262_t* dev);
+void ads_start_reset(ads1262_t* dev);
+void ads_start_set(ads1262_t* dev);
+void ads_pwdn_reset(ads1262_t* dev);
+void ads_pwdn_set(ads1262_t* dev);
 void ads_delay(uint32_t ms);
 
 #ifdef __cplusplus

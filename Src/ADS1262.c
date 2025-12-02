@@ -50,13 +50,13 @@ void ads_init_default(ads1262_t* dev) {
 
     /* Default ADS configuration */
     ads_port_print_string("Configuring ADS126x registers...\n");
-    if (ads_reg_write_and_check(dev, MODE1, (uint8_t)0x60) !=
-        0) { /* sync4 filter and rest default */
+    if (ads_reg_write_and_check(dev, MODE1, (uint8_t)0x00) !=
+        0) { /* sync1 filter and rest default */
         ads_port_print_string("Error writing MODE1 register!\n");
         return;
     }
     ads_delay(1);
-    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x85) != 0) { /* DR = 50 SPS, bypass PGA */
+    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x89) != 0) { /* DR = 1200 SPS, bypass PGA */
         ads_port_print_string("Error writing MODE2 register!\n");
         return;
     }
@@ -138,6 +138,10 @@ void ads_select_input(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
     ads_reg_write_and_check(dev, INPMUX, (uint8_t)(((muxp << 4) & 0xF0) | (muxn & 0x0F)));
 }
 
+void ads_select_input_fast(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
+    ads_reg_write_fast(dev, INPMUX, (uint8_t)(((muxp << 4) & 0xF0) | (muxn & 0x0F)));
+}
+
 void ads_start_conversion(ads1262_t* dev) { ads_start_set(dev); }
 void ads_stop_conversion(ads1262_t* dev) { ads_start_reset(dev); }
 
@@ -173,6 +177,18 @@ int ads_reg_write(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
     if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), 10) != 0)
         return -1;
     ads_delay(1);
+    ads_cs_set(dev);
+    return 0;
+}
+
+int ads_reg_write_fast(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
+    uint8_t cmd             = (uint8_t)((reg_addr & REG_CMD_MASK) | WREG);
+    uint8_t number_of_bytes = 1 - 1; // zero based
+    uint8_t buf[3]          = {cmd, number_of_bytes, data};
+
+    ads_cs_reset(dev);
+    if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), 10) != 0)
+        return -1;
     ads_cs_set(dev);
     return 0;
 }
