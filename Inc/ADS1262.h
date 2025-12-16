@@ -109,7 +109,7 @@ typedef struct {
 void ads_init_default(ads1262_t* dev);
 int  ads_reset(ads1262_t* dev);
 void ads_self_calibration(ads1262_t* dev);
-void ads_select_input(ads1262_t* dev, uint8_t pos_channel, uint8_t neg_channel);
+int ads_select_input(ads1262_t* dev, uint8_t pos_channel, uint8_t neg_channel);
 void ads_select_input_fast(ads1262_t* dev, uint8_t pos_channel, uint8_t neg_channel);
 void ads_start_conversion(ads1262_t* dev);
 void ads_stop_conversion(ads1262_t* dev);
