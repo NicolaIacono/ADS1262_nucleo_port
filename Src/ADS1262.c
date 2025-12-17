@@ -22,9 +22,9 @@ void ads_init_default(ads1262_t* dev) {
 
     ads_port_print_string("Initializing ADS1262...");
     ads_port_print_string("Resetting ADS1262...");
-    if (ads_reset(dev) != 0) {
+    while (ads_reset(dev) != 0) {
         ads_port_print_string("Error: ADS1262 reset failed!");
-        return;
+        ads_delay(500);
     }
 
     uint8_t id_reg_val = ads_reg_read(dev, ID);
@@ -36,8 +36,8 @@ void ads_init_default(ads1262_t* dev) {
     /* Default ADS configuration */
     ads_port_print_string("Configuring ADS126x registers...");
     /* POWER REGISTER */
-    /* Set to continuous conversion mode */
-    if (ads_reg_write_and_check(dev, POWER, (uint8_t)0x01) != 0) {
+    /* Set to continuous conversion mode, level shift voltage to aincom pin enabled */
+    if (ads_reg_write_and_check(dev, POWER, (uint8_t)0x03) != 0) {
         ads_port_print_string("Error writing POWER register!");
         return;
     }
@@ -58,7 +58,7 @@ void ads_init_default(ads1262_t* dev) {
         ads_port_print_string("Error writing MODE1 register!");
         return;
     }
-    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x89) != 0) { /* DR = 1200 SPS, bypass PGA */
+    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x09) != 0) { /* DR = 1200 SPS, bypass PGA */
         ads_port_print_string("Error writing MODE2 register!");
         return;
     }
@@ -74,13 +74,13 @@ void ads_init_default(ads1262_t* dev) {
     }
 
     /* Perform self offset calibration */
-    ads_port_print_string("Performing self offset calibration...");
-    ads_self_calibration(dev);
-    ads_port_print_string("Self offset calibration completed.");
-    ads_delay(100);
+    // ads_port_print_string("Performing self offset calibration...");
+    // ads_self_calibration(dev);
+    // ads_port_print_string("Self offset calibration completed.");
+    // ads_delay(100);
 
     /* Differential input between AIN6 and AIN7 (7-6) */
-    ads_select_input(dev, MUXP_AIN6, MUXN_AIN7);
+    ads_select_input(dev, MUXP_AIN5, MUXN_AINCOM);
     ads_delay(100);
 }
 
@@ -169,7 +169,9 @@ void ads_read_data_direct(ads1262_t* dev, uint8_t* rx_buff) {
     uint8_t tx_buff[6] = {CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY,
                           CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY,
                           CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY};
+    ads_cs_reset(dev);
     ads_port_spi_transmit_receive(dev->hspi, tx_buff, (uint8_t*)rx_buff, 6, 0);
+    ads_cs_set(dev);
 }
 
 /* ===================== Communication basic functions ===================== */

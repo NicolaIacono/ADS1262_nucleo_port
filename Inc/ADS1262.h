@@ -11,7 +11,7 @@ extern "C" {
 #include "ADS1262_port.h"
 #include <stdint.h>
 
-#define CONFIG_SPI_MASTER_DUMMY 0x00
+#define CONFIG_SPI_MASTER_DUMMY 0xFF
 
 /* Commands */
 #define NOP 0x00   // No operation
