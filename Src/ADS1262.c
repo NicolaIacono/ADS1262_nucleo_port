@@ -3,6 +3,7 @@
  */
 #include "ADS1262.h"
 #include "ADS1262_port.h"
+#include "stm32h7xx_hal_def.h"
 #include <stdint.h>
 
 /* ===================== Application functions ===================== */
@@ -35,9 +36,8 @@ void ads_init_default(ads1262_t* dev) {
 
     /* Default ADS configuration */
     ads_port_print_string("Configuring ADS126x registers...");
-    /* POWER REGISTER */
-    /* Set to continuous conversion mode, level shift voltage to aincom pin enabled */
-    if (ads_reg_write_and_check(dev, POWER, (uint8_t)0x03) != 0) {
+    /* POWER REGISTER - level shift voltage to aincom pin enabled */
+    if (ads_reg_write_and_check(dev, POWER, (uint8_t)0x13) != 0) {
         ads_port_print_string("Error writing POWER register!");
         return;
     }
@@ -49,12 +49,12 @@ void ads_init_default(ads1262_t* dev) {
     }
     /* MODE REGISTERS */
     if (ads_reg_write_and_check(dev, MODE0, (uint8_t)0x00) !=
-        0) { /* sync1 filter and rest default */
+        0) { 
         ads_port_print_string("Error writing MODE0 register!");
         return;
     }
     if (ads_reg_write_and_check(dev, MODE1, (uint8_t)0x00) !=
-        0) { /* sync1 filter and rest default */
+        0) {
         ads_port_print_string("Error writing MODE1 register!");
         return;
     }
@@ -74,13 +74,13 @@ void ads_init_default(ads1262_t* dev) {
     }
 
     /* Perform self offset calibration */
-    // ads_port_print_string("Performing self offset calibration...");
-    // ads_self_calibration(dev);
-    // ads_port_print_string("Self offset calibration completed.");
-    // ads_delay(100);
+    ads_port_print_string("Performing self offset calibration...");
+    ads_self_calibration(dev);
+    ads_port_print_string("Self offset calibration completed.");
+    ads_delay(100);
 
     /* Differential input between AIN6 and AIN7 (7-6) */
-    ads_select_input(dev, MUXP_AIN5, MUXN_AINCOM);
+    ads_select_input(dev, MUXP_AIN1, MUXN_AIN0);
     ads_delay(100);
 }
 
@@ -91,7 +91,7 @@ int ads_reset(ads1262_t* dev) {
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_SET);
     ads_port_delay(100);
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_RESET);
-    ads_port_delay(20);
+    ads_port_delay(100);
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_SET);
     ads_port_delay(100);
     // Check POWER register to confirm reset
@@ -99,7 +99,7 @@ int ads_reset(ads1262_t* dev) {
     if (power_reg & POWER_RESET_MASK) {
         // Reset happened successfully
         // Clear the reset bit by writing back to the POWER register
-        ads_reg_write(dev, POWER, power_reg & ~POWER_RESET_MASK);
+        ads_reg_write(dev, POWER, (power_reg & ~POWER_RESET_MASK));
         return 0;
     }
     // If not reset, return error
@@ -110,19 +110,15 @@ void ads_self_calibration(ads1262_t* dev) {
     ads_port_print_string("Starting self offset calibration...");
     /* Follow the datasheet provided instruction */
     /* Enable continuous conversion mode */
-    uint8_t mode0_reg = 0;
-    if (ads_reg_write_and_check(dev, MODE0, mode0_reg) != 0) {
+    if (ads_reg_write_and_check(dev, MODE0, 0x00) != 0) {
         ads_port_print_string("Error writing MODE0 register during calibration!");
         return;
     }
-    /* Set internal 2.5 V ADC reference */
-    uint8_t refmux_val = 0x00;
-    if (ads_reg_write_and_check(dev, REFMUX, refmux_val) != 0) {
+    /* Set reference */
+    if (ads_reg_write_and_check(dev, REFMUX, 0x00) != 0) {
         ads_port_print_string("Error writing REFMUX register during calibration!");
         return;
     }
-    /* Make sure the reference voltage is stable */
-    ads_delay(100);
     /* Select both inputs to float */
     if (ads_select_input(dev, MUXP_FLOAT, MUXN_FLOAT) != 0) {
         ads_port_print_string("Error selecting input channels during calibration!");
@@ -134,7 +130,7 @@ void ads_self_calibration(ads1262_t* dev) {
     ads_cs_reset(dev);
     uint8_t cmd = SFOCAL;
     ads_port_spi_transmit(dev->hspi, &cmd, 1, 10);
-    ads_port_delay(10000); /* Wait for calibration to be completed */
+    ads_port_delay(5000); /* Wait for calibration to be completed */
     ads_cs_set(dev);
     ads_delay(100);
     /* Stop conversion */
@@ -152,25 +148,33 @@ void ads_self_calibration(ads1262_t* dev) {
 }
 
 int ads_select_input(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
-    return ads_reg_write_and_check(dev, INPMUX, (uint8_t)(((muxp << 4) & 0xF0) | (muxn & 0x0F)));
+    uint8_t reg_val = ((muxp << 4) & 0xF0) | (muxn & 0x0F);
+    return ads_reg_write_and_check(dev, INPMUX, reg_val);
 }
 
 void ads_select_input_fast(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
-    ads_reg_write_fast(dev, INPMUX, (uint8_t)(((muxp << 4) & 0xF0) | (muxn & 0x0F)));
+    uint8_t reg_val = ((muxp << 4) & 0xF0) | (muxn & 0x0F);
+    ads_reg_write_fast(dev, INPMUX, reg_val);
 }
 
-void ads_start_conversion(ads1262_t* dev) { ads_start_set(dev); }
-void ads_stop_conversion(ads1262_t* dev) { ads_start_reset(dev); }
+void ads_start_conversion(ads1262_t* dev) {
+    ads_start_set(dev);
+    ads_delay(20);
+}
+void ads_stop_conversion(ads1262_t* dev) {
+    ads_start_reset(dev);
+    ads_delay(20);
+}
 
 void ads_read_data_direct(ads1262_t* dev, uint8_t* rx_buff) {
     /* Use ADC1 read data direct functional mode */
     /* Transfer bytes that are not a command and read the data from the output
      * shift register */
-    uint8_t tx_buff[6] = {CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY,
-                          CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY,
-                          CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY};
+    static uint8_t tx_buff[6] = {CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY,
+                                 CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY,
+                                 CONFIG_SPI_MASTER_DUMMY, CONFIG_SPI_MASTER_DUMMY};
     ads_cs_reset(dev);
-    ads_port_spi_transmit_receive(dev->hspi, tx_buff, (uint8_t*)rx_buff, 6, 0);
+    ads_port_spi_transmit_receive(dev->hspi, tx_buff, rx_buff, 6, 100);
     ads_cs_set(dev);
 }
 
@@ -178,33 +182,41 @@ void ads_read_data_direct(ads1262_t* dev, uint8_t* rx_buff) {
 
 void ads_spi_send_command(ads1262_t* dev, uint8_t cmd) {
     ads_cs_reset(dev);
-    ads_delay(1);
-    ads_port_spi_transmit(dev->hspi, &cmd, 1, 10);
-    ads_delay(1);
+    ads_delay(2);
+    ads_cs_set(dev);
+    ads_delay(2);
+    ads_cs_reset(dev);
+    ads_delay(2);
+    ads_port_spi_transmit(dev->hspi, &cmd, 1, HAL_MAX_DELAY);
+    ads_delay(2);
     ads_cs_set(dev);
 }
 
 int ads_reg_write(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
-    uint8_t cmd             = (uint8_t)((reg_addr & REG_CMD_MASK) | WREG);
-    uint8_t number_of_bytes = 1 - 1; // zero based
-    uint8_t buf[3]          = {cmd, number_of_bytes, data};
+    uint8_t cmd    = (uint8_t)((reg_addr & REG_CMD_MASK) | WREG);
+    uint8_t buf[3] = {cmd, 0, data};
 
     ads_cs_reset(dev);
-    ads_delay(1);
-    if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), 10) != 0)
+    ads_delay(2);
+    ads_cs_set(dev);
+    ads_delay(2);
+    ads_cs_reset(dev);
+    ads_delay(2);
+    if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), HAL_MAX_DELAY) != 0)
         return -1;
-    ads_delay(1);
+    ads_delay(2);
     ads_cs_set(dev);
     return 0;
 }
 
 int ads_reg_write_fast(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
-    uint8_t cmd             = (uint8_t)((reg_addr & REG_CMD_MASK) | WREG);
-    uint8_t number_of_bytes = 1 - 1; // zero based
-    uint8_t buf[3]          = {cmd, number_of_bytes, data};
+    uint8_t cmd    = (uint8_t)((reg_addr & REG_CMD_MASK) | WREG);
+    uint8_t buf[3] = {cmd, 0, data};
 
     ads_cs_reset(dev);
-    if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), 10) != 0)
+    ads_cs_set(dev);
+    ads_cs_reset(dev);
+    if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), 0) != 0)
         return -1;
     ads_cs_set(dev);
     return 0;
@@ -213,6 +225,7 @@ int ads_reg_write_fast(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
 int ads_reg_write_and_check(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
     if (ads_reg_write(dev, reg_addr, data) != 0)
         return -1;
+    ads_delay(10);
     uint8_t read_back = ads_reg_read(dev, reg_addr);
     return (read_back == data) ? 0 : -1;
 }
@@ -272,33 +285,33 @@ uint8_t ads_reg_read(ads1262_t* dev, uint8_t reg_addr) {
 /* ===================== low-level port functions ===================== */
 
 void ads_cs_reset(ads1262_t* dev) {
-    if (dev && dev->cs_port)
-        ads_port_cs_reset(dev->cs_port, dev->cs_pin);
+    // if (dev && dev->cs_port)
+    ads_port_cs_reset(dev->cs_port, dev->cs_pin);
 }
 
 void ads_cs_set(ads1262_t* dev) {
-    if (dev && dev->cs_port)
-        ads_port_cs_set(dev->cs_port, dev->cs_pin);
+    // if (dev && dev->cs_port)
+    ads_port_cs_set(dev->cs_port, dev->cs_pin);
 }
 
 void ads_start_reset(ads1262_t* dev) {
-    if (dev && dev->start_port)
-        ads_port_start_reset(dev->start_port, dev->start_pin);
+    // if (dev && dev->start_port)
+    ads_port_start_reset(dev->start_port, dev->start_pin);
 }
 
 void ads_start_set(ads1262_t* dev) {
-    if (dev && dev->start_port)
-        ads_port_start_set(dev->start_port, dev->start_pin);
+    // if (dev && dev->start_port)
+    ads_port_start_set(dev->start_port, dev->start_pin);
 }
 
 void ads_pwdn_reset(ads1262_t* dev) {
-    if (dev && dev->pwdn_port)
-        ads_port_pwdn_reset(dev->pwdn_port, dev->pwdn_pin);
+    // if (dev && dev->pwdn_port)
+    ads_port_pwdn_reset(dev->pwdn_port, dev->pwdn_pin);
 }
 
 void ads_pwdn_set(ads1262_t* dev) {
-    if (dev && dev->pwdn_port)
-        ads_port_pwdn_set(dev->pwdn_port, dev->pwdn_pin);
+    // if (dev && dev->pwdn_port)
+    ads_port_pwdn_set(dev->pwdn_port, dev->pwdn_pin);
 }
 
 void ads_delay(uint32_t ms) { ads_port_delay(ms); }
