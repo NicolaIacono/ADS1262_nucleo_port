@@ -48,22 +48,20 @@ void ads_init_default(ads1262_t* dev) {
         return;
     }
     /* MODE REGISTERS */
-    if (ads_reg_write_and_check(dev, MODE0, (uint8_t)0x00) !=
-        0) { 
+    if (ads_reg_write_and_check(dev, MODE0, (uint8_t)0x03) != 0) {
         ads_port_print_string("Error writing MODE0 register!");
         return;
     }
-    if (ads_reg_write_and_check(dev, MODE1, (uint8_t)0x00) !=
-        0) {
+    if (ads_reg_write_and_check(dev, MODE1, (uint8_t)0x00) != 0) {
         ads_port_print_string("Error writing MODE1 register!");
         return;
     }
-    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x09) != 0) { /* DR = 1200 SPS, bypass PGA */
+    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x87) != 0) {
         ads_port_print_string("Error writing MODE2 register!");
         return;
     }
     /* INPMUX REGISTER */
-    if (ads_reg_write_and_check(dev, INPMUX, (uint8_t)0x67) != 0) { /* DR = 1200 SPS, bypass PGA */
+    if (ads_reg_write_and_check(dev, INPMUX, (uint8_t)0x10) != 0) {
         ads_port_print_string("Error writing INPMUX register!");
         return;
     }
@@ -93,7 +91,7 @@ int ads_reset(ads1262_t* dev) {
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_RESET);
     ads_port_delay(100);
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_SET);
-    ads_port_delay(100);
+    ads_port_delay(1000);
     // Check POWER register to confirm reset
     uint8_t power_reg = ads_reg_read(dev, POWER);
     if (power_reg & POWER_RESET_MASK) {
@@ -102,6 +100,7 @@ int ads_reset(ads1262_t* dev) {
         ads_reg_write(dev, POWER, (power_reg & ~POWER_RESET_MASK));
         return 0;
     }
+    ads_port_print_string("ADS1262 reset failed: POWER register = 0x%02X.", power_reg);
     // If not reset, return error
     return -1;
 }
@@ -154,7 +153,7 @@ int ads_select_input(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
 
 void ads_select_input_fast(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
     uint8_t reg_val = ((muxp << 4) & 0xF0) | (muxn & 0x0F);
-    ads_reg_write_fast(dev, INPMUX, reg_val);
+    ads_reg_write(dev, INPMUX, reg_val);
 }
 
 void ads_start_conversion(ads1262_t* dev) {
@@ -232,18 +231,22 @@ int ads_reg_write_and_check(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
 
 uint8_t ads_reg_read(ads1262_t* dev, uint8_t reg_addr) {
     uint8_t cmd             = (uint8_t)((reg_addr & REG_CMD_MASK) | RREG);
-    uint8_t number_of_bytes = 1 - 1; // zero based
-    uint8_t tx_buff[3]      = {cmd, number_of_bytes, (uint8_t)CONFIG_SPI_MASTER_DUMMY};
+    uint8_t tx_buff[3]      = {cmd, 0, (uint8_t)CONFIG_SPI_MASTER_DUMMY};
     uint8_t rx_buff[3]      = {0};
 
     ads_cs_reset(dev);
-    ads_delay(1);
+    ads_delay(2);
+    ads_cs_set(dev);
+    ads_delay(2);
+    ads_cs_reset(dev);
+    ads_delay(2);
     if (ads_port_spi_transmit_receive(dev->hspi, tx_buff, rx_buff, 3, 10) != 0) {
         ads_cs_set(dev);
+        ads_delay(2);
         ads_port_print_string("Error reading register...");
         return 0;
     }
-    ads_delay(1);
+    ads_delay(2);
     ads_cs_set(dev);
 
     return rx_buff[2];
