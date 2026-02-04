@@ -48,7 +48,7 @@ void ads_init_default(ads1262_t* dev) {
         return;
     }
     /* MODE REGISTERS */
-    if (ads_reg_write_and_check(dev, MODE0, (uint8_t)0x03) != 0) {
+    if (ads_reg_write_and_check(dev, MODE0, (uint8_t)0x00) != 0) {
         ads_port_print_string("Error writing MODE0 register!");
         return;
     }
@@ -56,12 +56,12 @@ void ads_init_default(ads1262_t* dev) {
         ads_port_print_string("Error writing MODE1 register!");
         return;
     }
-    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x87) != 0) {
+    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x89) != 0) {
         ads_port_print_string("Error writing MODE2 register!");
         return;
     }
     /* INPMUX REGISTER */
-    if (ads_reg_write_and_check(dev, INPMUX, (uint8_t)0x10) != 0) {
+    if (ads_reg_write_and_check(dev, INPMUX, (uint8_t)0x01) != 0) {
         ads_port_print_string("Error writing INPMUX register!");
         return;
     }
@@ -78,7 +78,7 @@ void ads_init_default(ads1262_t* dev) {
     ads_delay(100);
 
     /* Differential input between AIN6 and AIN7 (7-6) */
-    ads_select_input(dev, MUXP_AIN1, MUXN_AIN0);
+    ads_select_input(dev, MUXP_AIN0, MUXN_AIN1);
     ads_delay(100);
 }
 
