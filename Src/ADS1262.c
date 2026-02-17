@@ -85,13 +85,31 @@ void ads_init_default(ads1262_t* dev) {
 int ads_reset(ads1262_t* dev) {
     if (!dev || !dev->pwdn_port)
         return -1;
-    // Try to reset using the PWDN pin if available
+
+    /* Abort any in-progress SPI transfer so the peripheral is not stuck in
+     * BUSY state (can happen when reset is called after stopping acquisition
+     * mid-transfer). */
+    HAL_SPI_Abort(dev->hspi);
+
+    // Power-cycle via PWDN pin
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_SET);
     ads_port_delay(100);
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_RESET);
     ads_port_delay(100);
     HAL_GPIO_WritePin(dev->pwdn_port, dev->pwdn_pin, GPIO_PIN_SET);
-    ads_port_delay(1000);
+
+    /* Wait for internal oscillator startup + td(PWUP) = 2^16 / fCLK ≈ 9 ms.
+     * Use 50 ms for margin. */
+    ads_port_delay(50);
+
+    /* Send a RESET command as recommended by the datasheet power-up sequence.
+     * This guarantees registers are at default values and the RESET indicator
+     * bit in the POWER register is set. */
+    ads_spi_send_command(dev, RESET);
+
+    /* Wait for td(RSSC) = 2^16 / fCLK ≈ 9 ms after RESET command. */
+    ads_port_delay(50);
+
     // Check POWER register to confirm reset
     uint8_t power_reg = ads_reg_read(dev, POWER);
     if (power_reg & POWER_RESET_MASK) {
