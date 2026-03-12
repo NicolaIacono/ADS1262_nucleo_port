@@ -56,7 +56,7 @@ void ads_init_default(ads1262_t* dev) {
         ads_port_print_string("Error writing MODE1 register!");
         return;
     }
-    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x89) != 0) {
+    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x8A) != 0) {
         ads_port_print_string("Error writing MODE2 register!");
         return;
     }
