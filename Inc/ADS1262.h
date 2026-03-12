@@ -90,6 +90,26 @@ extern "C" {
 #define MUXN_TDACN 0xE
 #define MUXN_FLOAT 0xF
 
+/* ADS1262 data rate codes (MODE2 register bits [3:0]) */
+#define ADS_DR_2_5_SPS    0x00
+#define ADS_DR_5_SPS      0x01
+#define ADS_DR_10_SPS     0x02
+#define ADS_DR_16_6_SPS   0x03
+#define ADS_DR_20_SPS     0x04
+#define ADS_DR_50_SPS     0x05
+#define ADS_DR_60_SPS     0x06
+#define ADS_DR_100_SPS    0x07
+#define ADS_DR_400_SPS    0x08
+#define ADS_DR_1200_SPS   0x09
+#define ADS_DR_2400_SPS   0x0A
+#define ADS_DR_4800_SPS   0x0B
+#define ADS_DR_7200_SPS   0x0C
+#define ADS_DR_14400_SPS  0x0D
+#define ADS_DR_19200_SPS  0x0E
+#define ADS_DR_38400_SPS  0x0F
+
+#define ADS_DR_MAX        ADS_DR_38400_SPS
+
 // Device context
 typedef struct {
     SPI_HandleTypeDef* hspi;
@@ -114,6 +134,8 @@ void ads_select_input_fast(ads1262_t* dev, uint8_t pos_channel, uint8_t neg_chan
 void ads_start_conversion(ads1262_t* dev);
 void ads_stop_conversion(ads1262_t* dev);
 void ads_read_data_direct(ads1262_t* dev, uint8_t* rx_buff);
+int  ads_set_data_rate(ads1262_t* dev, uint8_t data_rate);
+uint8_t ads_get_data_rate(ads1262_t* dev);
 
 /* ===================== Communication basic functions ===================== */
 void    ads_spi_send_command(ads1262_t* dev, uint8_t cmd);

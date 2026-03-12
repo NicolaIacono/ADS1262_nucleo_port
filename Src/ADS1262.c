@@ -56,7 +56,7 @@ void ads_init_default(ads1262_t* dev) {
         ads_port_print_string("Error writing MODE1 register!");
         return;
     }
-    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x8A) != 0) {
+    if (ads_reg_write_and_check(dev, MODE2, (uint8_t)0x89) != 0) {
         ads_port_print_string("Error writing MODE2 register!");
         return;
     }
@@ -193,6 +193,18 @@ void ads_read_data_direct(ads1262_t* dev, uint8_t* rx_buff) {
     ads_cs_reset(dev);
     ads_port_spi_transmit_receive(dev->hspi, tx_buff, rx_buff, 6, 100);
     ads_cs_set(dev);
+}
+
+int ads_set_data_rate(ads1262_t* dev, uint8_t data_rate) {
+    if (data_rate > ADS_DR_MAX)
+        return -1;
+    uint8_t mode2 = ads_reg_read(dev, MODE2);
+    mode2 = (mode2 & 0xF0) | (data_rate & 0x0F);
+    return ads_reg_write_and_check(dev, MODE2, mode2);
+}
+
+uint8_t ads_get_data_rate(ads1262_t* dev) {
+    return ads_reg_read(dev, MODE2) & 0x0F;
 }
 
 /* ===================== Communication basic functions ===================== */
