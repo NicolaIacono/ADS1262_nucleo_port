@@ -36,8 +36,8 @@ void ads_init_default(ads1262_t* dev) {
 
     /* Default ADS configuration */
     ads_port_print_string("Configuring ADS126x registers...");
-    /* POWER REGISTER - level shift voltage to aincom pin enabled */
-    if (ads_reg_write_and_check(dev, POWER, (uint8_t)0x13) != 0) {
+    /* POWER REGISTER - VBIAS + internal ref enabled, RESET bit cleared */
+    if (ads_reg_write_and_check(dev, POWER, (uint8_t)0x03) != 0) {
         ads_port_print_string("Error writing POWER register!");
         return;
     }
@@ -171,7 +171,7 @@ int ads_select_input(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
 
 void ads_select_input_fast(ads1262_t* dev, uint8_t muxp, uint8_t muxn) {
     uint8_t reg_val = ((muxp << 4) & 0xF0) | (muxn & 0x0F);
-    ads_reg_write(dev, INPMUX, reg_val);
+    ads_reg_write_fast(dev, INPMUX, reg_val);
 }
 
 void ads_start_conversion(ads1262_t* dev) {
@@ -245,7 +245,7 @@ int ads_reg_write_fast(ads1262_t* dev, uint8_t reg_addr, uint8_t data) {
     ads_cs_reset(dev);
     ads_cs_set(dev);
     ads_cs_reset(dev);
-    if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), 0) != 0)
+    if (ads_port_spi_transmit(dev->hspi, buf, sizeof(buf), 10) != 0)
         return -1;
     ads_cs_set(dev);
     return 0;
